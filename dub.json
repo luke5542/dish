@@ -1,0 +1,8 @@
+{
+	"name": "dish",
+	"description": "A minimal D application.",
+	"copyright": "Copyright © 2015, devin",
+	"authors": ["devin"],
+	"dependencies": {
+	}
+}
