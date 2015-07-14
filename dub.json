@@ -1,8 +1,8 @@
 {
-	"name": "dish",
-	"description": "A minimal D application.",
-	"copyright": "Copyright © 2015, devin",
-	"authors": ["devin"],
-	"dependencies": {
-	}
+    "name": "dish",
+    "description": "D Interactive Shell - a shell for the modern age, written entirely in D.",
+    "copyright": "Copyright © 2015, Devin Ridgway",
+    "authors": ["Devin Ridgway"],
+    "dependencies": {
+    }
 }
