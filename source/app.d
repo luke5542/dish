@@ -1,4 +1,5 @@
 import std.stdio;
+import std.string;
 import std.process;
 
 import core.stdc.stdlib;
@@ -21,14 +22,26 @@ void main()
     writeln("Starting Shell...");
     initShell();
 
+    char[] line;
     while(true)
     {
-        auto line = readln()[0..$-1];
-        if(line == "exit")
-        {
+        if(readln(line) && line !is null) {
+            if(line.length > 0)
+            {
+                line = chomp(line);
+                if(line == "exit")
+                {
+                    exit(0);
+                }
+                writeln(line);
+            }
+        } else {
+            //When ctrl+d is pressed and it's the only thing on the line,
+            //line is set to null. We could try to continue taking input and ignore
+            //the ctrl+d press, but exiting seems a bit more standard...
+            writeln("Terminating due to end of input.");
             exit(0);
         }
-        writeln(line);
     }
 }
 
