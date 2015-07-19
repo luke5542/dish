@@ -2,7 +2,10 @@ import std.stdio;
 import std.string;
 import std.process;
 
+import std.c.stdio;
+
 import core.stdc.stdlib;
+import core.stdc.ctype;
 import core.sys.posix.unistd;
 import core.sys.posix.termios;
 import core.sys.posix.signal;
@@ -12,12 +15,18 @@ import core.sys.posix.signal;
 #include <unistd.h>*/
 
 
-int shell_pgid;
-termios shell_tmodes;
-int shell_terminal;
-int shell_is_interactive;
+int shellGroupID;
+int shellTerminal;
+int isShellInteractive;
+
+termios shellModes;
+termios newState;
 
 bool sigintCalled = false;
+
+immutable char CTRL_C = 3;
+immutable char CTRL_D = 4;
+immutable char ENTER = 13;
 
 void main()
 {
@@ -25,20 +34,32 @@ void main()
     initShell();
 
     char[] line;
+    char nextChar;
     while(true)
     {
         try
         {
-            if(readln(line) && line !is null)
+            nextChar = cast(char) fgetc(core.stdc.stdio.stdin);
+            if(nextChar)//readln(line) && line !is null)
             {
-                if(line.length > 0)
+                if(isprint(nextChar))
                 {
-                    line = chomp(line);
-                    if(line == "exit")
-                    {
-                        exit(0);
-                    }
-                    writeln(line);
+                    write(nextChar);
+                }
+                else if(nextChar == ENTER)
+                {
+                    //Apparently ENTER is just a carriage return \r,
+                    //so we print that and \n
+                    writeln(ENTER);
+                }
+                else if(nextChar == CTRL_C)
+                {
+                    write("^C");
+                    closeShell(0);
+                }
+                else if(nextChar == CTRL_D)
+                {
+                    write("^D");
                 }
             }
             else
@@ -48,8 +69,8 @@ void main()
                  * line is set to null. We could try to continue taking input and ignore
                  * the ctrl+d press, but exiting seems a bit more standard...
                  */
-                writeln("Terminating due to end of input.");
-                exit(0);
+                writeln("Terminating due to end of, or invalid, input.");
+                closeShell(0);
             }
         }
         catch (std.stdio.StdioException ex)
@@ -67,8 +88,8 @@ void main()
                 //ctrl+d will get sent here when you've, in the past, captured a SIGINT
                 //request but continued typing and then later hit ctrl+d.
                 //This is an interesting problem...
-                stderr.writeln(ex);
-                exit(1);
+                std.stdio.stderr.writeln(ex);
+                closeShell(1);
             }
         }
     }
@@ -77,16 +98,16 @@ void main()
 void initShell()
 {
     /* See if we are running interactively.  */
-    shell_terminal = STDIN_FILENO;
-    shell_is_interactive = isatty(shell_terminal);
+    shellTerminal = STDIN_FILENO;
+    isShellInteractive = isatty(shellTerminal);
 
-    writeln("Shell is interactive: ", shell_is_interactive);
-    if (shell_is_interactive)
+    writeln("Shell is interactive: ", isShellInteractive);
+    if (isShellInteractive)
     {
         /* Loop until we are in the foreground.  */
-        while (tcgetpgrp (shell_terminal) != (shell_pgid = getpgrp()))
+        while (tcgetpgrp (shellTerminal) != (shellGroupID = getpgrp()))
         {
-            kill(- shell_pgid, SIGTTIN);
+            kill(- shellGroupID, SIGTTIN);
         }
 
         //Setup capture for ctrl+c
@@ -104,19 +125,32 @@ void initShell()
         signal(SIGCHLD, SIG_IGN);
 
         /* Put ourselves in our own process group.  */
-        shell_pgid = getpid();
-        if (setpgid(shell_pgid, shell_pgid) < 0)
+        shellGroupID = getpid();
+        if (setpgid(shellGroupID, shellGroupID) < 0)
         {
-            stderr.writeln("Couldn't put the shell in its own process group");
-            exit(1);
+            std.stdio.stderr.writeln("Couldn't put the shell in its own process group");
+            closeShell(1);
         }
 
         /* Grab control of the terminal.  */
-        tcsetpgrp(shell_terminal, shell_pgid);
+        tcsetpgrp(shellTerminal, shellGroupID);
 
         /* Save default terminal attributes for shell.  */
-        tcgetattr(shell_terminal, &shell_tmodes);
+        tcgetattr(shellTerminal, &shellModes);
+
+        // Open stdin in raw mode
+        /* Adjust output channel*/
+        tcgetattr(1, &newState);           /* get base of new state */
+        cfmakeraw(&newState);
+        tcsetattr(1, TCSADRAIN, &newState);/* set mode */
     }
+}
+
+//Use this instead of exit() so that we don't mess up the terminal...
+void closeShell(int status)
+{
+    tcsetattr(1, TCSADRAIN, &shellModes);
+    exit(status);
 }
 
 extern(C):
@@ -126,3 +160,5 @@ void handleControlC(int s)
     sigintCalled = true;
     //exit(0);
 }
+
+extern(C) void cfmakeraw(termios *termios_p);
