@@ -27,6 +27,8 @@ bool sigintCalled = false;
 immutable char CTRL_C = 3;
 immutable char CTRL_D = 4;
 immutable char ENTER = 13;
+immutable char BACKSPACE = 8;
+immutable char DELETE = 127;
 
 void main()
 {
@@ -45,12 +47,23 @@ void main()
                 if(isprint(nextChar))
                 {
                     write(nextChar);
+                    line ~= nextChar;
                 }
                 else if(nextChar == ENTER)
                 {
                     //Apparently ENTER is just a carriage return \r,
                     //so we print that and \n
                     writeln(ENTER);
+                    line.length = 0;
+                }
+                else if((nextChar == BACKSPACE || nextChar == DELETE) && line.length > 0)
+                {
+                    line[$-1] = ' ';
+                    // reset to the start of the line and print out the current line's buffer
+                    write(ENTER ~ line);
+                    line.length = line.length - 1;
+                    //fix the location of the cursor...
+                    write(ENTER ~ line);
                 }
                 else if(nextChar == CTRL_C)
                 {
