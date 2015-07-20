@@ -1,6 +1,7 @@
 import std.stdio;
 import std.string;
 import std.process;
+import std.algorithm;
 
 import std.c.stdio;
 
@@ -29,13 +30,17 @@ immutable char CTRL_D = 4;
 immutable char ENTER = 13;
 immutable char BACKSPACE = 8;
 immutable char DELETE = 127;
+immutable char ARROW_START = '\033';
+
+
+char[] line;
+size_t cursorLoc = 0;
 
 void main()
 {
     writeln("Starting Shell...");
     initShell();
 
-    char[] line;
     char nextChar;
     while(true)
     {
@@ -44,36 +49,7 @@ void main()
             nextChar = cast(char) fgetc(core.stdc.stdio.stdin);
             if(nextChar)//readln(line) && line !is null)
             {
-                if(isprint(nextChar))
-                {
-                    write(nextChar);
-                    line ~= nextChar;
-                }
-                else if(nextChar == ENTER)
-                {
-                    //Apparently ENTER is just a carriage return \r,
-                    //so we print that and \n
-                    writeln(ENTER);
-                    line.length = 0;
-                }
-                else if((nextChar == BACKSPACE || nextChar == DELETE) && line.length > 0)
-                {
-                    line[$-1] = ' ';
-                    // reset to the start of the line and print out the current line's buffer
-                    write(ENTER ~ line);
-                    line.length = line.length - 1;
-                    //fix the location of the cursor...
-                    write(ENTER ~ line);
-                }
-                else if(nextChar == CTRL_C)
-                {
-                    write("^C");
-                    closeShell(0);
-                }
-                else if(nextChar == CTRL_D)
-                {
-                    write("^D");
-                }
+                handleCharacter(nextChar);
             }
             else
             {
@@ -105,6 +81,133 @@ void main()
                 closeShell(1);
             }
         }
+    }
+}
+
+void handleCharacter(in ref char nextChar)
+{
+    if(isprint(nextChar))
+    {
+        write(nextChar);
+        line ~= nextChar;
+        cursorLoc++;
+    }
+    else if(nextChar == ENTER)
+    {
+        //Apparently ENTER is just a carriage return \r,
+        //so we print that and \n
+        writeln(ENTER);
+        line.length = 0;
+        cursorLoc = 0;
+    }
+    else if(nextChar == BACKSPACE)
+    {
+        version(OSX)
+        {
+            handleDelete();
+        }
+        else
+        {
+            handleBackspace();
+        }
+    }
+    else if(nextChar == DELETE)
+    {
+        version(OSX)
+        {
+            handleBackspace();
+        }
+        else
+        {
+            handleDelete();
+        }
+    }
+    else if(nextChar == ARROW_START)
+    {
+        handleArrowKeys();
+    }
+    else if(nextChar == CTRL_C)
+    {
+        write("^C");
+        closeShell(0);
+    }
+    else if(nextChar == CTRL_D)
+    {
+        write("^D");
+    }
+}
+
+void handleBackspace()
+{
+    if(line.length > 0)
+    {
+        //line[cursorLoc-1 .. $-1] = line[cursorLoc .. $];
+        std.algorithm.mutation.copy(line[cursorLoc-1 .. $-1], line[cursorLoc .. $]);
+        line[$-1] = ' ';
+        // reset to the start of the line and print out the current line's buffer
+        write(ENTER ~ line);
+        line.length = line.length - 1;
+        //fix the location of the cursor...
+        write(ENTER ~ line); // 1,2,3,4,5,6
+    }
+}
+
+void handleDelete()
+{
+    if(line.length > 0 && cursorLoc < line.length)
+    {
+        //line[cursorLoc .. $-1] = line[cursorLoc+1 .. $];
+        std.algorithm.mutation.copy(line[cursorLoc .. $-1], line[cursorLoc+1 .. $]);
+        line[$-1] = ' ';
+        // reset to the start of the line and print out the current line's buffer
+        write(ENTER ~ line);
+        line.length = line.length - 1;
+        //fix the location of the cursor...
+        write(ENTER ~ line);
+    }
+}
+
+void handleArrowKeys()
+{
+    char nextChar = cast(char) fgetc(core.stdc.stdio.stdin); // skip the [
+    nextChar = cast(char) fgetc(core.stdc.stdio.stdin);
+    switch(nextChar) { // the real value
+        case 'A':
+            // code for arrow up
+            write("Arrow ^");
+            break;
+        case 'B':
+            // code for arrow down
+            write("Arrow v");
+            break;
+        case 'C':
+            // code for arrow right
+            if(cursorLoc < line.length)
+            {
+                cursorLoc++;
+                write(ENTER ~ line[0..cursorLoc]);
+            }
+            else
+            {
+                //TODO system beep, because why not...
+            }
+            break;
+        case 'D':
+            // code for arrow left
+            if(cursorLoc > 0)
+            {
+                cursorLoc--;
+                write(ENTER ~ line[0..cursorLoc]);
+            }
+            else
+            {
+                //TODO system beep, because why not...
+            }
+            break;
+        default:
+            // whoops
+            write("Unknonw Arrow Key");
+            break;
     }
 }
 
