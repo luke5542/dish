@@ -4,5 +4,7 @@
     "copyright": "Copyright © 2015, Devin Ridgway",
     "authors": ["Devin Ridgway"],
     "dependencies": {
-    }
+    },
+    "targetPath": "bin\\",
+    "workingDirectory":"bin\\"
 }
