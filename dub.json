@@ -3,6 +3,11 @@
     "description": "D Interactive Shell - a shell for the modern age, written entirely in D.",
     "copyright": "Copyright © 2015, Devin Ridgway",
     "authors": ["Devin Ridgway"],
+    "license": "MIT",
+
+    "targetPath": "bin\\",
+
+
     "dependencies": {
     },
     "targetPath": "bin\\",
