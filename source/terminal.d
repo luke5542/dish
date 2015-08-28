@@ -69,7 +69,7 @@ version(Posix) {
 
 // Uncomment this line to get a main() to demonstrate this module's
 // capabilities.
-//version = Demo
+version = Demo;
 
 version(Windows) {
 	import core.sys.windows.windows;
@@ -1264,7 +1264,8 @@ struct RealTimeConsoleInput {
 				n.sa_handler = &sizeSignalHandler;
 				n.sa_mask = cast(sigset_t) 0;
 				n.sa_flags = 0;
-				sigaction(SIGWINCH, &n, &oldSigWinch);
+				// FIXME: make it actually able to find SIGWINCH
+				//sigaction(SIGWINCH, &n, &oldSigWinch);
 			}
 
 			{
@@ -1377,7 +1378,8 @@ struct RealTimeConsoleInput {
 		version(Posix) {
 			if(flags & ConsoleInputFlags.size) {
 				// restoration
-				sigaction(SIGWINCH, &oldSigWinch, null);
+				// FIXME: make it actually able to find SIGWINCH
+				//sigaction(SIGWINCH, &oldSigWinch, null);
 			}
 			sigaction(SIGINT, &oldSigIntr, null);
 			sigaction(SIGHUP, &oldHupIntr, null);
