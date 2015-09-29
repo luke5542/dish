@@ -20,10 +20,8 @@ module terminal;
 
 // FIXME: http://msdn.microsoft.com/en-us/library/windows/desktop/ms686016%28v=vs.85%29.aspx
 
-version(linux)
-	enum SIGWINCH = 28; // FIXME: confirm this is correct on other posix
-
 version(Posix) {
+	enum SIGWINCH = 28;
 	__gshared bool windowSizeChanged = false;
 	__gshared bool interrupted = false; /// you might periodically check this in a long operation and abort if it is set. Remember it is volatile. It is also sent through the input event loop via RealTimeConsoleInput
 	__gshared bool hangedUp = false; /// similar to interrupted.
@@ -69,7 +67,7 @@ version(Posix) {
 
 // Uncomment this line to get a main() to demonstrate this module's
 // capabilities.
-version = Demo;
+//version = Demo
 
 version(Windows) {
 	import core.sys.windows.windows;
@@ -1108,11 +1106,13 @@ http://msdn.microsoft.com/en-us/library/windows/desktop/ms683193%28v=vs.85%29.as
 			doTermcap("cl");
 		} else version(Windows) {
 			// http://support.microsoft.com/kb/99261
+			flush();
 
 			DWORD c;
 			CONSOLE_SCREEN_BUFFER_INFO csbi;
 			DWORD conSize;
 			GetConsoleScreenBufferInfo(hConsole, &csbi);
+			conSize = csbi.dwSize.X * csbi.dwSize.Y;
 			COORD coordScreen;
 			FillConsoleOutputCharacterA(hConsole, ' ', conSize, coordScreen, &c);
 			FillConsoleOutputAttribute(hConsole, csbi.wAttributes, conSize, coordScreen, &c);
@@ -1264,8 +1264,7 @@ struct RealTimeConsoleInput {
 				n.sa_handler = &sizeSignalHandler;
 				n.sa_mask = cast(sigset_t) 0;
 				n.sa_flags = 0;
-				// FIXME: make it actually able to find SIGWINCH
-				//sigaction(SIGWINCH, &n, &oldSigWinch);
+				sigaction(SIGWINCH, &n, &oldSigWinch);
 			}
 
 			{
@@ -1378,8 +1377,7 @@ struct RealTimeConsoleInput {
 		version(Posix) {
 			if(flags & ConsoleInputFlags.size) {
 				// restoration
-				// FIXME: make it actually able to find SIGWINCH
-				//sigaction(SIGWINCH, &oldSigWinch, null);
+				sigaction(SIGWINCH, &oldSigWinch, null);
 			}
 			sigaction(SIGINT, &oldSigIntr, null);
 			sigaction(SIGHUP, &oldHupIntr, null);
